@@ -3,7 +3,9 @@ import {
     vulnerableLogin,
     secureLogin,
     vulnerableRegister,
-    secureRegister
+    secureRegister,
+    vulnerableTokenVerify,
+    secureTokenVerify
 } from '../controllers/vulnerableController';
 
 const router = Router();
@@ -11,21 +13,23 @@ const router = Router();
 // =============================
 // FAILLE 1 — SQL INJECTION
 // =============================
-
-//  Route VULNÉRABLE — SQL Injection possible
 router.post('/login', vulnerableLogin);
-
-//  Route SÉCURISÉE — Requêtes préparées
 router.post('/secure-login', secureLogin);
 
 // =============================
 // FAILLE 2 — XSS
 // =============================
-
-//  Route VULNÉRABLE — XSS possible
 router.post('/register', vulnerableRegister);
-
-//  Route SÉCURISÉE — Input nettoyé
 router.post('/secure-register', secureRegister);
+
+// =============================
+// FAILLE 3 — MAUVAISE GESTION JWT
+// =============================
+
+//  Route VULNÉRABLE — accepte n'importe quel token
+router.get('/verify-token', vulnerableTokenVerify);
+
+//  Route SÉCURISÉE — vérifie signature + algorithme
+router.get('/secure-verify-token', secureTokenVerify);
 
 export default router;

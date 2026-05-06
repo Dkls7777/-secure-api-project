@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
 import db from '../database/database';
 
@@ -8,7 +9,7 @@ import db from '../database/database';
 export const vulnerableLogin = (req: Request, res: Response): void => {
     const { email } = req.body;
 
-    // ❌ DANGEREUX : l'input est collé directement dans la requête SQL
+    //  DANGEREUX : l'input est collé directement dans la requête SQL
     const query = `SELECT id, username, email, role FROM users WHERE email = '${email}'`;
 
     console.log(' Requête SQL exécutée :', query);
@@ -103,4 +104,66 @@ export const secureRegister = (req: Request, res: Response): void => {
         message: `Bienvenue ${sanitizedUsername} !`,
         info: 'Username nettoyé — XSS impossible'
     });
+};
+
+// ============================
+// FAILLE 3 — MAUVAISE GESTION JWT
+// ============================
+
+//  VULNÉRABLE — Accepte l'algorithme "none"
+export const vulnerableTokenVerify = (req: Request, res: Response): void => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        res.status(401).json({ error: 'Token manquant' });
+        return;
+    }
+
+    try {
+        //  DANGEREUX : on ne vérifie pas l'algorithme
+        // Un attaquant peut forger un token avec algorithm: "none"
+        const decoded = jwt.decode(token) as any;
+
+        if (!decoded) {
+            res.status(401).json({ error: 'Token invalide' });
+            return;
+        }
+
+        res.json({
+            message: 'Accès accordé (VULNÉRABLE)',
+            warning: 'Token non vérifié — algorithme none accepté !',
+            user: decoded
+        });
+
+    } catch (error) {
+        res.status(401).json({ error: 'Token invalide' });
+    }
+};
+
+//  SÉCURISÉ — Vérifie la signature et l'algorithme
+export const secureTokenVerify = (req: Request, res: Response): void => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        res.status(401).json({ error: 'Token manquant' });
+        return;
+    }
+
+    try {
+        //  SÉCURISÉ : on vérifie la signature ET on force l'algorithme HS256
+        const decoded = jwt.verify(token, process.env.JWT_SECRET as string, {
+            algorithms: ['HS256']
+        }) as any;
+
+        res.json({
+            message: 'Accès accordé (SÉCURISÉ)',
+            info: 'Token vérifié — signature et algorithme validés',
+            user: decoded
+        });
+
+    } catch (error) {
+        res.status(401).json({ error: 'Token invalide ou algorithme non autorisé' });
+    }
 };
